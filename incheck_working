@@ -1,0 +1,67 @@
+from tkinter import *
+import tkinter.messagebox as tm
+import RPi.GPIO as GPIO
+import mysql.connector
+
+class LoginFrame(Frame):
+    
+    GPIO.setmode(GPIO.BOARD)
+    GPIO.setwarnings(False)
+    GPIO.setup(11, GPIO.OUT)
+    GPIO.setup(7, GPIO.OUT)
+    
+    def __init__(self, master):
+        super().__init__(master)
+
+        self.l_1 = Label(self, text="Naam")
+        self.l_2 = Label(self, text="Email")
+
+        self.entry_1 = Entry(self)
+        self.entry_2 = Entry(self, show="*")
+
+        self.l_1.grid(row=0, sticky=E)
+        self.l_2.grid(row=1, sticky=E)
+        self.entry_1.grid(row=0, column=1)
+        self.entry_2.grid(row=1, column=1)
+
+        self.logbtn = Button(self, text="Inchecken", command = self._login_btn_clickked)
+        self.logbtn.grid(columnspan=2)
+
+        self.pack()
+
+    def _login_btn_clickked(self):
+        #print("Clicked")
+        Naam_get = self.entry_1.get()
+        Email_get = self.entry_2.get()
+
+        #print(username, password)
+        cnx = mysql.connector.connect(user='root', password='password',
+                              host ='138.68.107.189',
+                              database='sportschool')
+        cursor = cnx.cursor()
+        
+        query=('SELECT firstname, email FROM users ')
+        
+        cursor.execute(query)
+        
+        firstname = []
+        email = []
+        
+        for x in cursor:
+            firstname.append(x[0])
+            email.append(x[1])
+            
+        if Naam_get in firstname and Email_get in  email:
+            GPIO.output(11, True)
+            tm.showinfo('Login info', "welkom " + Naam_get)
+            GPIO.output(11, False)
+        else:
+            GPIO.output(7, True)
+            tm.showinfo('Login error', 'Verkeerde gegevens zijn ingevoerd')
+            GPIO.output(7, False)
+        cursor.close()
+        cnx.close()
+
+root = Tk()
+lf = LoginFrame(root)
+root.mainloop()
