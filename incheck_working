@@ -2,18 +2,47 @@ from tkinter import *
 import tkinter.messagebox as tm
 import RPi.GPIO as GPIO
 import mysql.connector
+from time import gmtime, strftime
+
+config = {
+  'user': 'root',
+  'password': 'password',
+  'host': '138.68.107.189',
+  'database': 'sportschool',
+  'raise_on_warnings': True,
+}
+
+cnx = mysql.connector.connect(**config)
+cursor = cnx.cursor()
+
+query = ("SELECT id, firstname, email FROM users")
+
+cursor.execute(query)
+
+firstname = []
+email = []
+users = []
+
+for x in cursor:
+    firstname.append(x[1])
+    email.append(x[2])
+    users.append(x)
+
+cursor.close()
+cnx.close()
+
 
 class LoginFrame(Frame):
-    
+
     GPIO.setmode(GPIO.BOARD)
     GPIO.setwarnings(False)
     GPIO.setup(11, GPIO.OUT)
     GPIO.setup(7, GPIO.OUT)
-    
+
     def __init__(self, master):
         super().__init__(master)
 
-        self.l_1 = Label(self, text="Naam")
+        self.l_1 = Label(self, text="Voornaam")
         self.l_2 = Label(self, text="Email")
 
         self.entry_1 = Entry(self)
@@ -30,37 +59,35 @@ class LoginFrame(Frame):
         self.pack()
 
     def _login_btn_clickked(self):
-        #print("Clicked")
-        Naam_get = self.entry_1.get()
-        Email_get = self.entry_2.get()
-
-        #print(username, password)
-        cnx = mysql.connector.connect(user='root', password='password',
-                              host ='138.68.107.189',
-                              database='sportschool')
-        cursor = cnx.cursor()
-        
-        query=('SELECT firstname, email FROM users ')
-        
-        cursor.execute(query)
-        
-        firstname = []
-        email = []
-        
-        for x in cursor:
-            firstname.append(x[0])
-            email.append(x[1])
-            
-        if Naam_get in firstname and Email_get in  email:
+        username = self.entry_1.get()
+        password = self.entry_2.get()
+        start_date = str(strftime("%Y-%m-%d", gmtime()))
+        if username in firstname and password in email:
             GPIO.output(11, True)
-            tm.showinfo('Login info', "welkom " + Naam_get)
+            tm.showinfo("Inloggen info", "Welkom " + username)
             GPIO.output(11, False)
+            cnx = mysql.connector.connect(host='138.68.107.189', port=3306, user='root',
+                                          password='password', database='sportschool')
+            cursor2 = cnx.cursor()
+
+            matching = [s for s in users if username in s]
+
+            user_id = int(matching[0][0])
+            try:
+                query_insert = "INSERT INTO tracks (start_date, user_id, location_id) VALUES (%s, %s, %s)"
+                cursor2.execute(query_insert, (start_date, user_id, 1))
+                cnx.commit()
+                print('gelukt')
+            except:
+                cnx.rollback()
+                print('niet gelukt')
+
+
+            cnx.close()
         else:
             GPIO.output(7, True)
-            tm.showinfo('Login error', 'Verkeerde gegevens zijn ingevoerd')
+            tm.showerror("Login error", "Incorrect Voornaam of Email ")
             GPIO.output(7, False)
-        cursor.close()
-        cnx.close()
 
 root = Tk()
 lf = LoginFrame(root)
